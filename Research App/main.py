@@ -214,8 +214,7 @@ client = OpenAI(api_key="sk-proj-4LbZgMA9XGTIG_g1HDBZMCka5ivNucvXKyDHIrQMuSXiVyb
 from fasthtml.common import *
 from pypdf import PdfReader
 
-
-app, rt = fast_app(live=True, hdrs=(Style("""
+app, rt = fast_app(live=True, static_dir='static', hdrs=(Style("""
     body {
         display: flex;
         justify-content: center;
@@ -224,9 +223,10 @@ app, rt = fast_app(live=True, hdrs=(Style("""
         height: 100vh;
         background-color: #fff6ea;
         margin: 0;
+        padding: 0;
     }
     button {
-        background-color: #499fa4;  /* Matching your theme color */
+        background-color: #499fa4;
         color: #fff6ea;
         padding: 10px 20px;
         border: none;
@@ -235,7 +235,7 @@ app, rt = fast_app(live=True, hdrs=(Style("""
         font-size: 16px;
     }
     button:hover {
-        background-color: #3a8186;  /* Slightly darker shade for hover effect */
+        background-color: #3a8186;
     }
     .logo {
         margin-bottom: 20px;
@@ -277,8 +277,11 @@ app, rt = fast_app(live=True, hdrs=(Style("""
     table {
         border-collapse: collapse;
         margin: 20px auto;
-        width: 80%;
+        width: 100%;  /* Table will take 100% of the available width */
+        max-width: 100%;  /* Limit the max-width to 100% */
         text-align: left;
+        overflow-x: auto;
+        display: block;  /* Makes the table scrollable if content exceeds max-width */
     }
     table, th, td {
         border: 1px solid #499fa4;
@@ -291,7 +294,8 @@ app, rt = fast_app(live=True, hdrs=(Style("""
         color: white;
     }
     .upload-button:hover {
-        background-color: #3b828b; /* Darker shade on hover */
+        background-color: #3b828b;
+    }
 """), Script("""
     document.addEventListener('dragover', function(event) {
         event.preventDefault();
@@ -300,6 +304,7 @@ app, rt = fast_app(live=True, hdrs=(Style("""
         event.preventDefault();
     });
 """)))
+
 
 upload_dir = Path("uploads")
 upload_dir.mkdir(exist_ok=True)
@@ -351,22 +356,25 @@ Analyze the following research paper and extract **only** the most relevant key 
 - Avoid unnecessary details or elaboration; the answer should be concise.
 - If the theme is not discussed in the paper, simply state: "The article does not cover the topic."
 - Stick strictly to the content related to the specific theme.
+- Separate each bullet point with a **new line**.
 
-Paper: {text[:4000]}
+Paper: {text}
 """
             try:
                 response = client.chat.completions.create(
-                    model="gpt-4",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant that analyzes research papers."},
                         {"role": "user", "content": prompt}
                     ],
-                    max_tokens=300,
+                    max_tokens=600,
                     temperature=0.7
                 )
                 # Updated way to access the message content
                 message = response.choices[0].message.content
-                results[topic] = message.strip()
+                cleaned_message = '\n'.join([line.strip() for line in message.splitlines() if line.strip()])  # Remove leading/trailing spaces and blank lines
+                results[topic] = cleaned_message
+                # results[topic] = message.strip()
             except Exception as e:
                 results[topic] = f"Error: {e}"
         else:
@@ -423,7 +431,33 @@ def get():
         )
     )
 
-# Route for analysis
+
+# # Route for analysis
+# @rt("/analyze", methods=["POST"])
+# async def analyze(pdf_file: UploadFile, theme1: str = "", theme2: str = "", theme3: str = ""):
+#     file_path = upload_dir / pdf_file.filename
+#     content = await pdf_file.read()
+#     file_path.write_bytes(content)
+
+#     text = extract_text_from_pdf(file_path)
+#     topics = [theme1.strip(), theme2.strip(), theme3.strip()]
+
+#     if text:
+#         analysis_results = analyze_text_with_openai(text, topics)
+#         table_rows = [
+#             Tr(Td(topic), Td(result)) for topic, result in analysis_results.items()
+#         ]
+#         return Div(
+#             Titled("Analysis Results",
+#                    Table(
+#                        Tr(Th("Theme"), Th("Key Points")),
+#                        *table_rows
+#                    )
+#             )
+#         )
+#     else:
+#         return Titled("Error", P("Failed to extract text from the PDF. Please try another file."))
+
 @rt("/analyze", methods=["POST"])
 async def analyze(pdf_file: UploadFile, theme1: str = "", theme2: str = "", theme3: str = ""):
     file_path = upload_dir / pdf_file.filename
@@ -436,7 +470,7 @@ async def analyze(pdf_file: UploadFile, theme1: str = "", theme2: str = "", them
     if text:
         analysis_results = analyze_text_with_openai(text, topics)
         table_rows = [
-            Tr(Td(topic), Td(result)) for topic, result in analysis_results.items()
+            Tr(Td(topic), Td(NotStr(f"<ul>{''.join([f'<li>{line}</li>' for line in result.splitlines()])}</ul>"))) for topic, result in analysis_results.items()
         ]
         return Div(
             Titled("Analysis Results",
@@ -448,7 +482,6 @@ async def analyze(pdf_file: UploadFile, theme1: str = "", theme2: str = "", them
         )
     else:
         return Titled("Error", P("Failed to extract text from the PDF. Please try another file."))
-
 
 
 serve()
