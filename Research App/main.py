@@ -5,7 +5,7 @@ from fasthtml.common import *
 from pypdf import PdfReader
 
 
-app, rt = fast_app(live=True, hdrs=(Style("""
+app, rt = fast_app(live=True,static_dir = 'static', hdrs=(Style("""
     body {
         display: flex;
         justify-content: center;
@@ -128,6 +128,8 @@ def extract_text_from_pdf(file_path):
 #     except Exception as e:
 #         return f"Error extracting text from PDF: {e}"
 
+
+# # Analyze text with OpenAI
 def analyze_text_with_openai(text, topics):
     results = {}
     for topic in topics:
@@ -143,40 +145,14 @@ def analyze_text_with_openai(text, topics):
                     max_tokens=300,
                     temperature=0.7
                 )
-                # Updated way to access the message content
-                message = response.choices[0].message.content
+                # Correctly access the message content
+                message = response["choices"][0]["message"]["content"]
                 results[topic] = message.strip()
             except Exception as e:
                 results[topic] = f"Error: {e}"
         else:
             results[topic] = "No theme provided."
     return results
-
-# # Analyze text with OpenAI
-# def analyze_text_with_openai(text, topics):
-#     results = {}
-#     for topic in topics:
-#         if topic.strip():
-#             prompt = f"Analyze the following research paper and extract key points related to the theme '{topic}':\n\n{text[:2000]}"
-#             try:
-#                 response = client.chat.completions.create(
-#                     model="gpt-4",
-#                     messages=[
-#                         {"role": "system", "content": "You are a helpful assistant that analyzes research papers."},
-#                         {"role": "user", "content": prompt}
-#                     ],
-#                     max_tokens=300,
-#                     temperature=0.7
-#                 )
-#                 # Correctly access the message content
-#                 message = response["choices"][0]["message"]["content"]
-#                 results[topic] = message.strip()
-#             except Exception as e:
-#                 results[topic] = f"Error: {e}"
-#         else:
-#             results[topic] = "No theme provided."
-#     return results
-
 
 
 
