@@ -160,7 +160,7 @@ def analyze_text_with_openai(text, topics):
 def get():
     return Div(
         Div(
-            Img(src="/static/Re2Sheet.png", alt="Logo", cls="logo", style="width: 350px; display: block; margin: 0 auto;"),
+            Img(src="Research App/static/Re2Sheet.png", alt="Logo", cls="logo", style="width: 350px; display: block; margin: 0 auto;"),
             cls='center-content'
         ),
         Form(method="post", enctype="multipart/form-data", action="/analyze")(
